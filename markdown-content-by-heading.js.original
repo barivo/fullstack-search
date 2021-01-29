@@ -1,0 +1,90 @@
+const remark = require('remark');
+const stringify = require('remark-stringify');
+const { promisify } = require('util');
+const visit = require('unist-util-visit');
+const { kebabCase } = require('lodash');
+
+/*
+ { name:
+     'React Navigation\nzh\n10\nd\n98abbbcb-d30d-53e5-b9b8-29f9df72e2ea',
+    value:
+     'React Navigation 是一个React Native 的路由类库。它与我们之前讲到的React Router 库共享类似的功能，但是，与React Router 不同， React Router提供了更多的原生的功能，比如原生的动作与视图切换动画。' },
+
+
+'React Navigation\nzh\n10\nd\n98abbbcb-d30d-53e5-b9b8-29f9df72e2ea'
+> console.log(s)
+React Navigation
+zh
+10
+d
+98abbbcb-d30d-53e5-b9b8-29f9df72e2ea
+
+*/
+
+
+///async function markdownTransform({ lang, part, letter }, id, node) {
+async function transformMarkdown({ lang, part, letter }, id, node) {
+  const content = new Map();
+
+  const transform = options => tree => {
+    let current = null;
+
+    visit(tree, node => {
+      if (
+        node.type === 'heading' &&
+        node.depth > 2 &&
+        node.children &&
+        node.children[0].type === 'text' &&
+        lang !== 'es'
+      ) {
+        current = `${
+          node.children[0].value
+        }\n${lang}\n${part}\n${letter}\n${id}`;
+      } else if (node.type === 'paragraph' && current) {
+        if (!content.has(current)) {
+          content.set(current, '');
+        } else {
+          let paragraph = content.get(current);
+          const { children } = node;
+
+          children.forEach(e =>
+            e.type === 'link'
+              ? (paragraph += e.children[0].value)
+              : (paragraph += e.value)
+          );
+
+          content.set(current, paragraph);
+        }
+      }
+    });
+
+    // for (let [k, v] of content.entries()) {
+    content.delete();
+    for (let __map of content.entries()) {
+      let [k,v] = __map
+      if (!v) content.delete(k);
+    }
+
+  };
+
+  await remark()
+    .use(transform)
+    .use(stringify)
+    .process(node);
+
+
+  return Array.from(content).map(([name, value]) => ({id, part, letter, lang, name, value}))
+
+ 
+  // return content;
+  // return Promise.resolve(content)
+  //   .then(myMap => {
+  //     if (myMap.size > 0) {
+  //       return Array.from(myMap).map(([name, value]) => ({id, part, letter, lang, name, value}))
+  //     }
+  //     else
+  //       null;
+
+  //   })
+}
+module.exports = { transformMarkdown };

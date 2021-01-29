@@ -1,4 +1,7 @@
-const IS_DEV = process.env.NODE_ENV === 'development';
+const {transformMarkdown} = require('./markdown-content-by-heading');
+
+// const IS_DEV = process.env.NODE_ENV === 'development';
+const IS_DEV = false;
 
 const createSearchConfig = (indexName, language) => {
   return {
@@ -16,25 +19,29 @@ const createSearchConfig = (indexName, language) => {
                 letter
                 part
               }
-              id      
+              id
               rawMarkdownBody
             }
           }
         }
     `,
       ref: 'id',
-      index: ['body'],
-      store: ['id', 'part', 'letter', 'lang'],
-      normalizer: ({ data }) => {
-        return IS_DEV
-          ? []
-          : data.allMarkdownRemark.nodes.map(node => ({
-              id: node.id,
-              part: node.frontmatter.part,
-              letter: node.frontmatter.letter,
-              lang: node.frontmatter.lang,
-              body: node.rawMarkdownBody,
-            }));
+      index: ["heading"],
+      store: ["id", "part", "letter", "lang", "heading"],
+
+      normalizer: async ({ data }) => {
+        let zoo = await Promise.all(
+          data.allMarkdownRemark.nodes.map(async (node) => {
+            let foo = await transformMarkdown(
+              node.frontmatter,
+              node.id,
+              node.rawMarkdownBody
+            );
+            return foo;
+          })
+        );
+        console.log(zoo, "\n");
+        return zoo.flat();
       },
     },
   };

@@ -1,70 +1,74 @@
-const remark = require('remark');
-const stringify = require('remark-stringify');
+const remark = require("remark");
+const stringify = require("remark-stringify");
+const { promisify } = require("util");
+const visit = require("unist-util-visit");
+const { kebabCase } = require("lodash");
 
-const { promisify } = require('util');
-
-const visit = require('unist-util-visit');
-const { kebabCase } = require('lodash');
-
-async function transformMarkdown({ node, id, lang, part, letter }) {
+async function transformMarkdown({ lang, part, letter }, id, node) {
   const content = new Map();
 
-  const transform = options => tree => {
+  const transform = (options) => (tree) => {
     let current = null;
 
-    visit(tree, node => {
+    visit(tree, (node) => {
       if (
-        node.type === 'heading' &&
+        node.type === "heading" &&
         node.depth > 2 &&
         node.children &&
-        node.children[0].type === 'text'
+        node.children[0].type === "text" &&
+        lang !== "es"
       ) {
-        // current = `${kebabCase( node.children[0].value)} ${lang} ${part} ${letter} ${id}`;
-        current = `${node.children[0].value}\n${lang}\n${part}\n${letter}\n${id}`;
-      } else if (node.type === 'paragraph' && current) {
+        // current = `${node.children[0].value}\n${lang}\n${part}\n${letter}\n${id}`;
+        // id: `${_heading} ___${node.frontmatter.lang}_${ node.frontmatter.letter }_${node.frontmatter.part}_${index}_${node.id}`,
+        current = `${node.children[0].value} ___${lang}_${letter}_${part}_${id}`;
+        //  __${lang}__${part}__${letter}__${id}`;
+      } else if (node.type === "paragraph" && current) {
         if (!content.has(current)) {
-          content.set(current, '');
+          content.set(current, "");
         } else {
-          // let value = content.get(current);
           let paragraph = content.get(current);
           const { children } = node;
 
-          // let paragraph = "";
-          children.forEach(e =>
-            e.type === 'link'
-              ? // ? content.set(value.push(e.children[0].value))
-                // : content.set(value.push(e.value))
-                (paragraph += e.children[0].value)
+          children.forEach((e) =>
+            e.type === "link"
+              ? (paragraph += e.children[0].value)
               : (paragraph += e.value)
           );
 
           content.set(current, paragraph);
-
-          // if (value.length > 1) content.set(current, [value.join("\n")]);
-
-          /*
-           *   [ 'In ',
-           *     'part 5',
-           *     ' we got familiar with one of these libraries, the ', ...]
-           *
-           *
-           */
         }
       }
     });
 
-    // console.log(content.get("testing-components"));
-    for (let [k, v] of content.entries()) {
+    // for (let [k, v] of content.entries()) {
+    content.delete();
+    for (let __map of content.entries()) {
+      let [k, v] = __map;
       if (!v) content.delete(k);
     }
   };
 
-  await remark()
-    .use(transform)
-    .use(stringify)
-    .process(node);
+  await remark().use(transform).use(stringify).process(node);
 
-  return Promise.resolve(content);
+  return Array.from(content).map(([name, value]) => ({
+    // id: kebabCase(name) + `  __${lang}_${part}_${letter}_${id}`,
+
+    id: name,
+    part,
+    letter,
+    lang,
+    heading: value,
+  }));
+
+  // return content;
+  // return Promise.resolve(content)
+  //   .then(myMap => {
+  //     if (myMap.size > 0) {
+  //       return Array.from(myMap).map(([name, value]) => ({id, part, letter, lang, name, value}))
+  //     }
+  //     else
+  //       null;
+
+  //   })
 }
-
 module.exports = { transformMarkdown };

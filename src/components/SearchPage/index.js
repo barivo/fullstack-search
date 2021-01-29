@@ -27,7 +27,7 @@ const SearchPage = ({
   const results = useFlexSearch(debouncedQuery, index, store);
   const filteredResults = results.filter(res => res.letter !== null);
   const showResults = Boolean(query);
-  console.log(filteredResults);
+  // console.log(filteredResults);
   // console.log(Object.keys(store).length);
 
   return (
