@@ -1,5 +1,12 @@
 const {transformMarkdown} = require('./markdown-content-by-heading');
 
+// node 10.x does not have a flat() function
+function flatten(arr)  {
+  if (arr)
+    return arr.filter(y => y ).reduce((acc, val) => acc.concat(val), [])
+  else return arr
+}
+
 // const IS_DEV = process.env.NODE_ENV === 'development';
 const IS_DEV = false;
 
@@ -40,8 +47,7 @@ const createSearchConfig = (indexName, language) => {
             return foo;
           })
         );
-        console.log(zoo, "\n");
-        return zoo.flat();
+        return flatten(zoo);
       },
     },
   };
